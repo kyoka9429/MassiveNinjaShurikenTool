@@ -193,7 +193,7 @@
 
         <div class="mt-6 text-center">
             <p class="text-xs text-gray-500">
-                Massive Ninja Shuriken Tool v2.0 (Bluetooth) | ベイブレード性能比較ツール
+                Massive Ninja Shuriken Tool v2.0 (Bluetooth) | Blade Power Calculator
             </p>
         </div>
     </div>
@@ -357,20 +357,43 @@
                 }
             }
 
-            if (indexValue >= 176 && indexValue <= 182) {
+            // SPデータ (176-181): 8個ずつ
+            if (indexValue >= 176 && indexValue <= 181) {
+                addDebugLog(`SPデータ受信 [${indexValue}]`);
                 for (let i = 0; i < 8; i++) {
                     const wksp = getPower(data, i);
                     if (wksp !== 0) {
-                        if (wksp > maxPowerInShoot) {
-                            maxPowerInShoot = wksp;
-                            currentPower = wksp;
-                            document.getElementById('current-power').textContent = wksp;
-                            addDebugLog(`SP更新: ${wksp} (最大: ${maxPowerInShoot})`);
-                        }
-                    }
-                }
+                        // 元のコードに合わせて「最後の非ゼロ値」を使う場合：
+                        currentPower = wksp;
+                     maxPowerInShoot = wksp;
+                
+                      // または最大値を取る場合（こちらの方が正確かも）：
+                       // if (wksp > maxPowerInShoot) {
+                      //     maxPowerInShoot = wksp;
+                      //     currentPower = wksp;
+                      // }
+                
+                       document.getElementById('current-power').textContent = wksp;
+                       addDebugLog(`SP: ${wksp}`);
+                 }
+             }
             }
-
+            // SPデータ (182): 2個のみ + シュート回数
+            if (indexValue === 182) {
+                addDebugLog(`SPデータ受信 [182] - 最終`);
+                for (let i = 0; i < 2; i++) {  // ← 2個だけ！
+                  const wksp = getPower(data, i);
+                  if (wksp !== 0) {
+                       currentPower = wksp;
+                      maxPowerInShoot = wksp;
+                       document.getElementById('current-power').textContent = wksp;
+                       addDebugLog(`SP: ${wksp}`);
+                   }
+               }
+               // シュート回数（オプション）
+               const shootCount = data.getUint8(9);
+               addDebugLog(`シュート回数: ${shootCount}`);
+         }
             if (indexValue === 115) {
                 document.getElementById('shoot-state').textContent = 'ベイ回転中 - 停止したら停止ボタンを押してください';
                 document.getElementById('connection-status').textContent = `計測中... 最大SP: ${maxPowerInShoot}`;
