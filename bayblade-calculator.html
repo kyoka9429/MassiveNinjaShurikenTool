@@ -1,0 +1,565 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ベイブレード性能値計算機</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .debug-log {
+            font-family: 'Courier New', monospace;
+            background: #1a1a1a;
+            color: #00ff00;
+            padding: 1rem;
+            border-radius: 0.5rem;
+            max-height: 200px;
+            overflow-y: auto;
+            font-size: 0.75rem;
+        }
+        .bey-card {
+            transition: all 0.3s ease;
+        }
+        .bey-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+        }
+    </style>
+</head>
+<body class="bg-gradient-to-br from-blue-50 to-indigo-100 min-h-screen p-6">
+    <div class="max-w-4xl mx-auto">
+        <!-- ヘッダー -->
+        <div class="bg-white rounded-xl shadow-lg p-6 mb-6">
+            <div class="flex items-center gap-3 mb-4">
+                <svg class="w-8 h-8 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z"></path>
+                </svg>
+                <h1 class="text-3xl font-bold text-gray-800">ベイブレード性能値計算機</h1>
+            </div>
+            
+            <div class="bg-indigo-50 rounded-lg p-4 mb-4">
+                <h2 class="font-semibold text-indigo-900 mb-2">性能値の計算方法</h2>
+                <p class="text-sm text-indigo-800">性能値 = 回転時間（秒） ÷ √シュートパワー</p>
+                <p class="text-xs text-indigo-600 mt-1">※ シュートパワーに依存せず、エネルギー効率を評価できます</p>
+            </div>
+
+            <!-- Bluetooth接続セクション -->
+            <div class="bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg p-4 mb-4 border-2 border-blue-200">
+                <h2 class="font-semibold text-gray-800 mb-3 flex items-center gap-2">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.111 16.404a5.5 5.5 0 017.778 0M12 20h.01m-7.08-7.071c3.904-3.905 10.236-3.905 14.141 0M1.394 9.393c5.857-5.857 15.355-5.857 21.213 0"></path>
+                    </svg>
+                    ベイパス接続
+                </h2>
+                
+                <div id="bluetooth-not-supported" class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-3 hidden">
+                    <p class="font-bold">Bluetooth非対応</p>
+                    <p class="text-sm">お使いのブラウザはWeb Bluetooth APIに対応していません。</p>
+                    <p class="text-sm">Chrome（PC・Android）、Edge等の対応ブラウザをお試しください。</p>
+                </div>
+                
+                <div id="not-connected-section">
+                    <button id="connect-btn" class="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.111 16.404a5.5 5.5 0 017.778 0M12 20h.01m-7.08-7.071c3.904-3.905 10.236-3.905 14.141 0M1.394 9.393c5.857-5.857 15.355-5.857 21.213 0"></path>
+                        </svg>
+                        ベイパスに接続
+                    </button>
+                    
+                    <div id="debug-log-section" class="mt-3 hidden">
+                        <div class="debug-log" id="debug-log"></div>
+                    </div>
+                </div>
+
+                <div id="connected-section" class="space-y-3 hidden">
+                    <div class="flex items-center gap-2">
+                        <div class="w-3 h-3 bg-green-500 rounded-full animate-pulse"></div>
+                        <span class="text-sm font-medium text-green-700">接続中</span>
+                    </div>
+                    
+                    <div class="text-sm text-gray-600 bg-white rounded p-2" id="connection-status">接続済み</div>
+
+                    <div class="flex gap-2 items-center">
+                        <input type="text" id="bey-name-input" placeholder="ベイの名前（省略可）" class="flex-1 border-2 border-gray-300 rounded-lg px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none">
+                        <button id="disconnect-btn" class="bg-red-500 text-white px-4 py-2 rounded-lg hover:bg-red-600 transition-colors text-sm">切断</button>
+                    </div>
+
+                    <div class="bg-white rounded-lg p-3 space-y-2">
+                        <div class="flex justify-between items-center">
+                            <span class="text-sm font-medium text-gray-700">状態:</span>
+                            <span class="text-sm text-indigo-600 font-semibold" id="shoot-state">待機中</span>
+                        </div>
+                        
+                        <div class="flex justify-between items-center">
+                            <span class="text-sm font-medium text-gray-700">シュートパワー:</span>
+                            <span class="text-2xl font-bold text-indigo-600" id="current-power">0</span>
+                        </div>
+                        
+                        <div class="flex justify-between items-center">
+                            <span class="text-sm font-medium text-gray-700">回転時間:</span>
+                            <span class="text-2xl font-bold text-green-600" id="timer">00:00.000</span>
+                        </div>
+
+                        <button id="stop-btn" disabled class="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-lg transition-colors bg-gray-300 text-gray-500 cursor-not-allowed">
+                            <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                                <rect x="6" y="6" width="8" height="8"></rect>
+                            </svg>
+                            停止して記録
+                        </button>
+                    </div>
+
+                    <details class="mt-3">
+                        <summary class="cursor-pointer text-sm text-gray-600 hover:text-gray-800">デバッグログを表示</summary>
+                        <div class="debug-log mt-2" id="debug-log-connected"></div>
+                    </details>
+                </div>
+            </div>
+
+            <button id="add-bey-btn" class="flex items-center gap-2 bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 transition-colors">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+                </svg>
+                手動でベイを追加
+            </button>
+        </div>
+
+        <!-- ベイリスト -->
+        <div id="bey-list" class="space-y-4 mb-6"></div>
+
+        <!-- ランキング -->
+        <div id="ranking-section" class="bg-white rounded-xl shadow-lg p-6 hidden">
+            <h2 class="text-xl font-bold text-gray-800 mb-4">性能比較・ランキング</h2>
+            <div id="ranking-list" class="space-y-3"></div>
+        </div>
+    </div>
+
+    <script>
+        // グローバル変数
+        let beyblades = [
+            { id: 1, name: 'ベイA', power: 8100, minutes: 3, seconds: 12.15 },
+            { id: 2, name: 'ベイB', power: 5000, minutes: 2, seconds: 10.03 }
+        ];
+        let nextId = 3;
+        let isConnected = false;
+        let isRecording = false;
+        let currentPower = 0;
+        let bleDevice = null;
+        let bleCharacteristic = null;
+        let timerInterval = null;
+        let startTime = 0;
+        let stopTime = 0;
+        let debugLogs = [];
+
+        // 初期化
+        document.addEventListener('DOMContentLoaded', function() {
+            checkBluetoothSupport();
+            renderBeyList();
+            updateRanking();
+            setupEventListeners();
+        });
+
+        // Bluetooth対応チェック
+        function checkBluetoothSupport() {
+            if (!navigator.bluetooth) {
+                document.getElementById('bluetooth-not-supported').classList.remove('hidden');
+                document.getElementById('connect-btn').disabled = true;
+                document.getElementById('connect-btn').classList.add('bg-gray-300', 'cursor-not-allowed');
+                document.getElementById('connect-btn').classList.remove('bg-blue-600', 'hover:bg-blue-700');
+                addDebugLog('Bluetooth API not supported');
+            } else {
+                addDebugLog('Bluetooth API supported');
+            }
+        }
+
+        // デバッグログ追加
+        function addDebugLog(message) {
+            const timestamp = new Date().toLocaleTimeString();
+            const log = `[${timestamp}] ${message}`;
+            debugLogs.push(log);
+            console.log('[DEBUG]', message);
+            
+            // ログ表示更新
+            const logElement1 = document.getElementById('debug-log');
+            const logElement2 = document.getElementById('debug-log-connected');
+            const logHtml = debugLogs.map(l => `<div>${l}</div>`).join('');
+            
+            if (logElement1) {
+                logElement1.innerHTML = logHtml;
+                logElement1.scrollTop = logElement1.scrollHeight;
+                document.getElementById('debug-log-section').classList.remove('hidden');
+            }
+            if (logElement2) {
+                logElement2.innerHTML = logHtml;
+                logElement2.scrollTop = logElement2.scrollHeight;
+            }
+        }
+
+        // イベントリスナー設定
+        function setupEventListeners() {
+            document.getElementById('connect-btn').addEventListener('click', connectBluetooth);
+            document.getElementById('disconnect-btn').addEventListener('click', disconnectBluetooth);
+            document.getElementById('add-bey-btn').addEventListener('click', addBey);
+            document.getElementById('stop-btn').addEventListener('click', stopRecording);
+        }
+
+        // Bluetooth接続
+        async function connectBluetooth() {
+            addDebugLog('ボタンがクリックされました');
+            try {
+                addDebugLog('接続処理を開始...');
+                document.getElementById('connection-status').textContent = '接続中...';
+                
+                addDebugLog('デバイスをリクエスト中...');
+                bleDevice = await navigator.bluetooth.requestDevice({
+                    filters: [{ services: ["55c40000-f8eb-11ec-b939-0242ac120002"] }]
+                });
+                addDebugLog(`デバイス発見: ${bleDevice.name || '名前なし'}`);
+
+                addDebugLog('GATT接続中...');
+                const server = await bleDevice.gatt.connect();
+                addDebugLog('GATT接続成功');
+                
+                addDebugLog('サービス取得中...');
+                const service = await server.getPrimaryService("55c40000-f8eb-11ec-b939-0242ac120002");
+                addDebugLog('サービス取得成功');
+                
+                addDebugLog('キャラクタリスティック取得中...');
+                bleCharacteristic = await service.getCharacteristic("55c4f002-f8eb-11ec-b939-0242ac120002");
+                addDebugLog('キャラクタリスティック取得成功');
+
+                addDebugLog('通知リスナー設定中...');
+                bleCharacteristic.addEventListener('characteristicvaluechanged', handleNotification);
+                await bleCharacteristic.startNotifications();
+                addDebugLog('通知リスナー設定完了');
+
+                isConnected = true;
+                document.getElementById('not-connected-section').classList.add('hidden');
+                document.getElementById('connected-section').classList.remove('hidden');
+                document.getElementById('connection-status').textContent = '接続済み - ベイをセットしてください';
+                document.getElementById('shoot-state').textContent = 'セット待機中';
+                addDebugLog('接続完了！');
+            } catch (error) {
+                console.error('Bluetooth接続エラー:', error);
+                addDebugLog(`エラー: ${error.name} - ${error.message}`);
+                document.getElementById('connection-status').textContent = '接続失敗: ' + error.message;
+            }
+        }
+
+        // Bluetooth切断
+        function disconnectBluetooth() {
+            if (bleDevice && bleDevice.gatt.connected) {
+                bleDevice.gatt.disconnect();
+            }
+            bleDevice = null;
+            bleCharacteristic = null;
+            isConnected = false;
+            isRecording = false;
+            document.getElementById('not-connected-section').classList.remove('hidden');
+            document.getElementById('connected-section').classList.add('hidden');
+            stopTimer();
+            resetTimer();
+            addDebugLog('切断しました');
+        }
+
+        // 2バイトデータからパワー値を取得
+        function getPower(data, i) {
+            const d1 = data.getUint8(i * 2 + 1);
+            const d2 = data.getUint8(i * 2 + 2);
+            return (d2 << 8) | d1;
+        }
+
+        // Bluetooth通知受信
+        function handleNotification(event) {
+            const data = event.target.value;
+            const indexValue = data.getUint8(0);
+
+            // セット検知
+            if (indexValue === 160) {
+                document.getElementById('shoot-state').textContent = 'セット完了 - シュート待機中';
+                document.getElementById('connection-status').textContent = 'セット検知 - シュートしてください';
+                addDebugLog('ベイセット検知');
+            }
+
+            // シュートデータ収集
+            if (indexValue >= 112 && indexValue <= 115) {
+                if (indexValue === 112) {
+                    document.getElementById('shoot-state').textContent = 'シュート中...';
+                    isRecording = true;
+                    document.getElementById('stop-btn').disabled = false;
+                    document.getElementById('stop-btn').classList.remove('bg-gray-300', 'text-gray-500', 'cursor-not-allowed');
+                    document.getElementById('stop-btn').classList.add('bg-orange-600', 'hover:bg-orange-700', 'text-white');
+                    resetTimer();
+                    startTimer();
+                    addDebugLog('シュート開始');
+                }
+            }
+
+            // SP値更新
+            if (indexValue >= 176 && indexValue <= 182) {
+                for (let i = 0; i < 8; i++) {
+                    const wksp = getPower(data, i);
+                    if (wksp !== 0) {
+                        currentPower = wksp;
+                        document.getElementById('current-power').textContent = wksp;
+                    }
+                }
+            }
+
+            // シュート完了
+            if (indexValue === 115) {
+                stopTimer();
+                document.getElementById('shoot-state').textContent = 'シュート完了 - 停止ボタンを押してください';
+                document.getElementById('connection-status').textContent = '計測完了 - データを記録してください';
+                addDebugLog('シュート完了');
+            }
+        }
+
+        // タイマー開始
+        function startTimer() {
+            startTime = Date.now();
+            timerInterval = setInterval(displayTime, 10);
+        }
+
+        // タイマー停止
+        function stopTimer() {
+            if (timerInterval) {
+                clearInterval(timerInterval);
+                timerInterval = null;
+            }
+            stopTime += (Date.now() - startTime);
+        }
+
+        // タイマーリセット
+        function resetTimer() {
+            document.getElementById('timer').textContent = '00:00.000';
+            stopTime = 0;
+        }
+
+        // タイマー表示更新
+        function displayTime() {
+            const currentTime = new Date(Date.now() - startTime + stopTime);
+            const m = String(currentTime.getMinutes()).padStart(2, '0');
+            const s = String(currentTime.getSeconds()).padStart(2, '0');
+            const ms = String(currentTime.getMilliseconds()).padStart(3, '0');
+            document.getElementById('timer').textContent = `${m}:${s}.${ms}`;
+        }
+
+        // 停止して記録
+        function stopRecording() {
+            if (!isRecording) return;
+
+            stopTimer();
+            isRecording = false;
+            document.getElementById('stop-btn').disabled = true;
+            document.getElementById('stop-btn').classList.add('bg-gray-300', 'text-gray-500', 'cursor-not-allowed');
+            document.getElementById('stop-btn').classList.remove('bg-orange-600', 'hover:bg-orange-700', 'text-white');
+
+            const timer = document.getElementById('timer').textContent;
+            const timeMatch = timer.match(/(\d+):(\d+)\.(\d+)/);
+            if (!timeMatch) return;
+
+            const minutes = parseInt(timeMatch[1]);
+            const seconds = parseFloat(timeMatch[2] + '.' + timeMatch[3]);
+            const beyName = document.getElementById('bey-name-input').value.trim() || `ベイ${nextId}`;
+
+            // 同名のベイを検索
+            const existingBey = beyblades.find(b => b.name === beyName);
+
+            if (existingBey) {
+                existingBey.power = currentPower;
+                existingBey.minutes = minutes;
+                existingBey.seconds = seconds;
+                document.getElementById('connection-status').textContent = `「${beyName}」のデータを更新しました`;
+                addDebugLog(`「${beyName}」を更新`);
+            } else {
+                beyblades.push({
+                    id: nextId++,
+                    name: beyName,
+                    power: currentPower,
+                    minutes: minutes,
+                    seconds: seconds
+                });
+                document.getElementById('connection-status').textContent = `「${beyName}」を追加しました`;
+                addDebugLog(`「${beyName}」を追加`);
+            }
+
+            document.getElementById('shoot-state').textContent = '記録完了 - 次のシュート待機中';
+            document.getElementById('bey-name-input').value = '';
+            resetTimer();
+            renderBeyList();
+            updateRanking();
+        }
+
+        // 性能値計算
+        function calculatePerformance(power, minutes, seconds) {
+            if (!power || power <= 0 || minutes === '' || seconds === '') return null;
+            const totalSeconds = minutes * 60 + seconds;
+            if (totalSeconds <= 0) return null;
+            return totalSeconds / Math.sqrt(power);
+        }
+
+        // ベイ手動追加
+        function addBey() {
+            beyblades.push({
+                id: nextId++,
+                name: `ベイ${String.fromCharCode(64 + nextId - 1)}`,
+                power: '',
+                minutes: '',
+                seconds: ''
+            });
+            renderBeyList();
+            updateRanking();
+        }
+
+        // ベイ削除
+        function deleteBey(id) {
+            if (beyblades.length > 1) {
+                beyblades = beyblades.filter(b => b.id !== id);
+                renderBeyList();
+                updateRanking();
+            }
+        }
+
+        // ベイリスト描画
+        function renderBeyList() {
+            const container = document.getElementById('bey-list');
+            container.innerHTML = beyblades.map(bey => {
+                const performance = calculatePerformance(bey.power, bey.minutes, bey.seconds);
+                const totalSeconds = (bey.minutes || 0) * 60 + (bey.seconds || 0);
+                
+                return `
+                    <div class="bey-card bg-white rounded-xl shadow-md p-6">
+                        <div class="flex items-start justify-between mb-4">
+                            <input type="text" value="${bey.name}" onchange="updateBeyName(${bey.id}, this.value)" 
+                                class="text-xl font-semibold border-b-2 border-transparent hover:border-gray-300 focus:border-indigo-500 focus:outline-none px-2">
+                            <button onclick="deleteBey(${bey.id})" class="text-red-500 hover:text-red-700 transition-colors" ${beyblades.length === 1 ? 'disabled' : ''}>
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                                </svg>
+                            </button>
+                        </div>
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">シュートパワー</label>
+                                <input type="number" value="${bey.power}" onchange="updateBeyPower(${bey.id}, this.value)" 
+                                    class="w-full border-2 border-gray-300 rounded-lg px-3 py-2 focus:border-indigo-500 focus:outline-none" 
+                                    min="0" placeholder="例: 8100">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">回転時間（分）</label>
+                                <input type="number" value="${bey.minutes}" onchange="updateBeyMinutes(${bey.id}, this.value)" 
+                                    class="w-full border-2 border-gray-300 rounded-lg px-3 py-2 focus:border-indigo-500 focus:outline-none" 
+                                    min="0" placeholder="例: 3">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">回転時間（秒）</label>
+                                <input type="number" step="0.01" value="${bey.seconds}" onchange="updateBeySeconds(${bey.id}, this.value)" 
+                                    class="w-full border-2 border-gray-300 rounded-lg px-3 py-2 focus:border-indigo-500 focus:outline-none" 
+                                    min="0" max="59.99" placeholder="例: 12.15">
+                            </div>
+                        </div>
+                        <div class="bg-gray-50 rounded-lg p-4">
+                            <div class="grid grid-cols-2 gap-4">
+                                <div>
+                                    <p class="text-sm text-gray-600">合計回転時間</p>
+                                    <p class="text-2xl font-bold text-gray-800">${performance !== null ? totalSeconds.toFixed(2) + '秒' : '---'}</p>
+                                </div>
+                                <div>
+                                    <p class="text-sm text-gray-600">性能値</p>
+                                    <p class="text-2xl font-bold text-indigo-600">${performance !== null ? performance.toFixed(3) : '---'}</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        // ベイ情報更新関数
+        function updateBeyName(id, value) {
+            const bey = beyblades.find(b => b.id === id);
+            if (bey) bey.name = value;
+        }
+
+        function updateBeyPower(id, value) {
+            const bey = beyblades.find(b => b.id === id);
+            if (bey) {
+                bey.power = value === '' ? '' : parseFloat(value) || '';
+                renderBeyList();
+                updateRanking();
+            }
+        }
+
+        function updateBeyMinutes(id, value) {
+            const bey = beyblades.find(b => b.id === id);
+            if (bey) {
+                bey.minutes = value === '' ? '' : parseInt(value) || '';
+                renderBeyList();
+                updateRanking();
+            }
+        }
+
+        function updateBeySeconds(id, value) {
+            const bey = beyblades.find(b => b.id === id);
+            if (bey) {
+                bey.seconds = value === '' ? '' : parseFloat(value) || '';
+                renderBeyList();
+                updateRanking();
+            }
+        }
+
+        // ランキング更新
+        function updateRanking() {
+            const ranked = beyblades
+                .map(bey => ({
+                    ...bey,
+                    performance: calculatePerformance(bey.power, bey.minutes, bey.seconds)
+                }))
+                .filter(bey => bey.performance !== null)
+                .sort((a, b) => b.performance - a.performance);
+
+            if (ranked.length === 0) {
+                document.getElementById('ranking-section').classList.add('hidden');
+                return;
+            }
+
+            document.getElementById('ranking-section').classList.remove('hidden');
+            const maxPerformance = ranked[0].performance;
+            
+            const container = document.getElementById('ranking-list');
+            container.innerHTML = ranked.map((bey, index) => {
+                const percentage = (bey.performance / maxPerformance * 100);
+                const isTopPerformer = index === 0;
+                const badgeClass = isTopPerformer ? 'bg-yellow-400 text-yellow-900' : 
+                                   index === 1 ? 'bg-gray-300 text-gray-700' : 
+                                   index === 2 ? 'bg-orange-300 text-orange-900' : 
+                                   'bg-gray-200 text-gray-600';
+                const barClass = isTopPerformer ? 'bg-gradient-to-r from-yellow-500 to-yellow-600' : 
+                                'bg-gradient-to-r from-indigo-500 to-indigo-600';
+                
+                return `
+                    <div class="space-y-2">
+                        <div class="flex items-center gap-3">
+                            <div class="flex items-center justify-center w-12 h-12 rounded-lg font-bold text-lg ${badgeClass}">
+                                #${index + 1}
+                            </div>
+                            <div class="flex-1">
+                                <div class="flex items-center gap-2 mb-1">
+                                    <span class="font-semibold text-gray-800">${bey.name}</span>
+                                    ${isTopPerformer ? '<span class="bg-yellow-400 text-yellow-900 text-xs font-bold px-2 py-0.5 rounded">最高性能</span>' : ''}
+                                </div>
+                                <div class="bg-gray-200 rounded-full h-8 overflow-hidden">
+                                    <div class="${barClass} h-full flex items-center justify-end px-3 text-white text-sm font-semibold transition-all duration-300" 
+                                         style="width: ${percentage}%">
+                                        ${bey.performance.toFixed(3)}
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="w-16 text-sm text-gray-600 text-right">${percentage.toFixed(1)}%</div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+    </script>
+</body>
+</html>
