@@ -343,10 +343,9 @@
             }
 
             if (indexValue >= 112 && indexValue <= 115) {
-                if (indexValue === 112) {
+                if (indexValue === 112 && !isRecording) {
                     document.getElementById('shoot-state').textContent = 'シュート中...';
                     isRecording = true;
-                    maxPowerInShoot = 0;
                     const btn = document.getElementById('stop-btn');
                     btn.disabled = false;
                     btn.classList.remove('bg-gray-700', 'text-gray-500', 'cursor-not-allowed');
@@ -473,6 +472,10 @@
             resetTimer();
             renderBeyList();
             updateRanking();
+
+            maxPowerInShoot = 0;
+            currentPower = 0;
+            document.getElementById('current-power').textContent = '0';
         }
 
         function calculatePerformance(power, minutes, seconds) {
