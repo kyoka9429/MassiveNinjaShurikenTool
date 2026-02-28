@@ -1,0 +1,64 @@
+body {
+    background: linear-gradient(135deg, #1a1625 0%, #2b285b 50%, #007b7e 100%);
+}
+.debug-log {
+    font-family: 'Courier New', monospace;
+    background: #1a1a1a;
+    color: #00ff00;
+    padding: 1rem;
+    border-radius: 0.5rem;
+    max-height: 200px;
+    overflow-y: auto;
+    font-size: 0.75rem;
+}
+.bey-card {
+    transition: all 0.3s ease;
+    background: linear-gradient(135deg, rgba(43, 40, 91, 0.8) 0%, rgba(0, 123, 126, 0.6) 100%);
+    border: 1px solid rgba(0, 123, 126, 0.3);
+}
+.bey-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 20px 40px rgba(0, 123, 126, 0.4);
+    border-color: rgba(0, 255, 170, 0.6);
+}
+.card-base {
+    background: linear-gradient(135deg, rgba(26, 22, 37, 0.95) 0%, rgba(43, 40, 91, 0.9) 100%);
+    border: 1px solid rgba(0, 123, 126, 0.4);
+}
+.btn-primary {
+    background: linear-gradient(135deg, #2b285b 0%, #007b7e 100%);
+    transition: all 0.3s ease;
+}
+.btn-primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 10px 20px rgba(0, 123, 126, 0.5);
+    background: linear-gradient(135deg, #3a3570 0%, #009a9d 100%);
+}
+.btn-danger {
+    background: linear-gradient(135deg, #dc2626 0%, #991b1b 100%);
+    transition: all 0.3s ease;
+}
+.btn-danger:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 10px 20px rgba(220, 38, 38, 0.5);
+}
+.input-dark {
+    background: rgba(0, 0, 0, 0.3);
+    border: 2px solid rgba(0, 123, 126, 0.3);
+    color: #ffffff;
+    transition: all 0.3s ease;
+}
+.input-dark:focus {
+    border-color: #007b7e;
+    background: rgba(0, 0, 0, 0.5);
+    outline: none;
+}
+.input-dark::placeholder {
+    color: rgba(255, 255, 255, 0.4);
+}
+.gradient-text {
+    background: linear-gradient(135deg, #00ffaa 0%, #007b7e 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
